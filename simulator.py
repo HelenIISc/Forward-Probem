@@ -20,7 +20,7 @@ class Game:
         
     def create_background_sprites_from_image(self):
         for row in range(0,road_image_rect.width,backgroundtilesize):
-            for col in range (0,2*road_image_rect.height,backgroundtilesize):
+            for col in range (0,road_image_rect.height,backgroundtilesize):
                 Background_Tile(self,row,col)              
         
         

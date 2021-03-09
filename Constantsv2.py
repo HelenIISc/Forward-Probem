@@ -24,11 +24,11 @@ Warm_up_time=2 #in seconds
 proportion_of_trucks=0.3
 
 
-player_start_velocity=(40*5/18)
+player_start_velocity=(1*5/18)
 player_acceleration_step=0.00000001  # write how these values came here
 player_decceleration_step=0.00000001
-player_friction_decc=0.0000000075
-player_max_velocity=(150*5/18)
+player_friction_decc = 0.0000000075
+player_max_velocity = (150*5/18)
 
 
 
@@ -37,7 +37,7 @@ background_creater_constant=2
 background_tilesize=int(pixel_conversion/background_creater_constant)
 Length_of_Screen=800
 Width_of_Screen=road_image_rect.width
-entry_point_of_player=2*road_image_rect.height
+entry_point_of_player=road_image_rect.height
 length_of_car=4*pixel_conversion
 width_of_car= int(1.8*pixel_conversion)
 length_of_truck=7*pixel_conversion
