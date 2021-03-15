@@ -1,3 +1,10 @@
+"""Defines constants used.
+
+Libraries like pygame, numpy etc. are imported here.Also, various
+constants like IDM parameters, dimensions of vehicles, frame rate,
+initial parameter  values of player vehicle are set here.
+"""
+
 import pygame
 import numpy
 import random
@@ -13,7 +20,6 @@ if road_image_rect.width % backgroundtilesize !=0 and road_image_rect.height % b
     print("Background tile size not compatible")
     sys.exit()  #sys.exit("Background tile size not compatible")
 
-
 FPS=5
 delta_t=1/FPS 
 pixel_conversion=20  #note: this is set such that length of screen is 800
@@ -23,15 +29,11 @@ Warm_up_time=2 #in seconds
 
 proportion_of_trucks=0.3
 
-
-player_start_velocity=(1*5/18)
+player_start_velocity=(10*5/18)
 player_acceleration_step=0.00000001  # write how these values came here
 player_decceleration_step=0.00000001
 player_friction_decc = 0.0000000075
 player_max_velocity = (150*5/18)
-
-
-
 
 background_creater_constant=2
 background_tilesize=int(pixel_conversion/background_creater_constant)
@@ -43,11 +45,8 @@ width_of_car= int(1.8*pixel_conversion)
 length_of_truck=7*pixel_conversion
 width_of_truck=2*pixel_conversion
 
-left_lane_mid=210  #have to do this manually
+left_lane_mid=210  # x co-ordinate of middle of left lane
 right_lane_mid=280
-
-
-
 
 delta=4
 #VEHICLE PARAMETERS-CAR

@@ -1,5 +1,16 @@
-from Constantsv2 import *
+"""Imports and performs minor modifications to pygame sprites.
 
+2-D images used for sprites like vehicles, background tiles etc. are imported
+here. Modifications are made to the images to fit the required dimensions of
+sprites and also to match with background.
+
+  Typical usage example:
+
+  image = pygame.image.load("example_image.png")
+  image=pygame.transform.scale(image,(<width>,<height>))
+  clean_image(image,background_image)
+"""
+from Constantsv2 import *
 
 def clean_image(mycar_image,road_image):#try out the transparent option
     """Cleans images
@@ -46,7 +57,7 @@ yellowpainttexture_image=pygame.image.load("yellowpainttexture.jpg")
 #yellowpainttexture_image=pygame.transform.scale(yellowpainttexture_image,(background_tilesize,background_tilesize))
 
 
-"""The assests are cleaned here """
+"""The assests are cleaned of borders here """
 clean_image(enemycar_image1,roadtexture_image)
 clean_image(enemycar_image2,roadtexture_image)
 clean_image(mycar_image,roadtexture_image)

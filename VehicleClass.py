@@ -1,7 +1,37 @@
+"""Defines class objects for different types of sprites.
+
+This defines class objects for vehicle sprites following IDM, player sprite,
+and background image sprites. In addition, it defines Camera and Map objects.
+A function to identify neighbouring sprites of any sprite is defined here.
+"""
 
 from Assests import *
 #=====================================================================================================
-class OtherVeh(pygame.sprite.Sprite):    
+
+class OtherVeh(pygame.sprite.Sprite):
+    """Class to define vehicle sprites other than player vehicle.
+
+    This class defines vehicle sprites that follow IDM rule. Either a car or truck is created based on the probability
+    value `proportion_of_trucks'.
+
+    Attributes:
+        image: A pygame image representing the sprite.
+        rect: A pygame surface object representing the sprite.
+        a: Float variable for the IDM parameter maximum acceleration.
+        b: Float variable for the IDM parameter maximum decceleration.
+        s0: Float variable for the IDM parameter minimum gap.
+        T: Float variable for the IDM parameter time headway.
+        v0: Float variable for the IDM parameter desired speed.
+        length: Float variable for actual length of vehicle in m.
+        width: Float variable for actual width of vehicle in m.
+        type: Indicator for type of vehicle ( 1-car, 2-truck).
+        lane: Indicator for lane of vehicle (1-left lane, 2-right lane).
+        v: Float variable for velocity.
+        acc: Float variable for acceleration.
+        s: Float variable for gap with front vehicle.
+        delta_v: Float variable for difference in velocity with front vehicle.
+    """
+
     def __init__(self,position,lane,game):
         pygame.sprite.Sprite.__init__(self,game.other_vehicles)
         # LIST OUT ALL THE CLASS VARIABLES 
@@ -34,7 +64,6 @@ class OtherVeh(pygame.sprite.Sprite):
     
     
     def update(self,game):
-        print(game.player_entered)
         self.vehicle_in_front_same_lane,self.vehicle_in_back_same_lane,self.vehicle_in_front_other_lane,self.vehicle_in_back_other_lane=neighbouring_vehicles(self,game.all_vehicles)
         if self.vehicle_in_front_same_lane==None:
             self.delta_v=-10000000000            
@@ -59,7 +88,7 @@ class OtherVeh(pygame.sprite.Sprite):
         if self.acc < acc_lower_cutoff:
             self.acc=acc_lower_cutoff
             
-        distance_moved=(self.v*delta_t)+(0.5*self.acc*delta_t*delta_t)        
+        distance_moved = (self.v*delta_t)+(0.5*self.acc*delta_t*delta_t)
         self.rect.y=self.rect.y-(distance_moved*pixel_conversion)
         
         self.v=self.v+(self.acc*delta_t)
@@ -68,6 +97,22 @@ class OtherVeh(pygame.sprite.Sprite):
             self.v=0"""
 #========================================================================================================================
 class PlayerCar(pygame.sprite.Sprite):
+    """Class to define player car.
+
+    This class defines vehicle sprite that is controlled by the player.
+
+    Attributes:
+        image: A pygame image representing the sprite.
+        rect: A pygame surface object representing the sprite.
+        length: Float variable for actual length of vehicle in m.
+        width: Float variable for actual width of vehicle in m.
+        type: Indicator for type of vehicle ( 1-car, 2-truck).
+        lane: Indicator for lane of vehicle (1-left lane, 2-right lane).
+        v: Float variable for velocity.
+        acc: Float variable for acceleration.
+        max_velocity: Float variable for maximum velocity allowed.
+    """
+
     def __init__(self,position,lane):
         pygame.sprite.Sprite.__init__(self)
         self.image=mycar_image
@@ -129,6 +174,24 @@ class PlayerCar(pygame.sprite.Sprite):
 #==========================================================================================================================            
             
 def neighbouring_vehicles(vehicle,all_vehicles):
+    """Fetches the neighbouring sprites.
+
+    This fetches the vehicles neighbouring to vehicle from the list of
+    all_vehicles.
+
+    Args:
+        vehicle: OtherVeh or PlayerCar instance whose neighbours are to be found.
+        all_vehicles: Sprite Group of OtherVeh or PlayerCar instances  from which neighbours are to be found.
+
+    Returns:
+        4 items of OtherVeh or PlayerCar instance from the sprite group all_vehicles. They are
+        vehicle_in_front_same_lane,vehicle_in_back_same_lane,vehicle_in_front_other_lane,
+        in order vehicle_in_back_other_lane. In the absence of a neighbouring vehicle at any
+        specified position, function returns None instead of a sprite
+
+    Raises:
+        None
+    """
     same_lane_vehicles=[sprite for sprite in all_vehicles if sprite.lane==vehicle.lane]
     same_lane_vehicles_in_front=[sprite for sprite in same_lane_vehicles if vehicle.rect.top-sprite.rect.top>0]
     same_lane_vehicles_in_back=[sprite for sprite in same_lane_vehicles if vehicle.rect.top-sprite.rect.top<0]
@@ -154,6 +217,18 @@ def neighbouring_vehicles(vehicle,all_vehicles):
     return vehicle_in_front_same_lane,vehicle_in_back_same_lane,vehicle_in_front_other_lane,vehicle_in_back_other_lane
 #=========================================================================================================================================
 class Camera:
+    """Class to define camera.
+
+    This class defines a pygame surface object which keeps its top-left corner coincided with player sprites's top-left
+    corner. Camera follows the player car while rendering by shifting all sprites such that top-left corner of camera is
+    at the center of screen.
+
+    Attributes:
+        camera: A pygame Rect object.
+        height: Length of camera.
+        width: Width of camera.
+    """
+
     def __init__(self,width,height):
         self.camera=pygame.Rect(0,0,width,height)
         self.width=width
@@ -173,6 +248,15 @@ class Camera:
         self.camera=pygame.Rect(x,y,self.width,self.height)
 #================================================================================================
 class Map:
+    """Class to define map.
+
+    This class stores the map settings.
+
+    Attributes:
+        data: A list of strings to store map.
+        height: Length of map.
+        width: Width of map.
+    """
     def __init__(self,filename):
         self.data=[]
         with open(filename,'rt') as f:
@@ -183,10 +267,17 @@ class Map:
         self.height=len(self.data)*background_tilesize
 #=======================================================================================================
 class Background_Tile(pygame.sprite.Sprite):
+    """Class to define Background sprites.
+
+    This class defines sprites that are used as background.
+
+    Attributes:
+        image: A pygame image object representing the sprite.
+        rect: A pygame Rect object representing the sprite.
+    """
     def __init__(self, game, x, y):
-        self.groups = game.background_tiles
-        pygame.sprite.Sprite.__init__(self, self.groups)  #adds this sprite to grass_tiles group
-        self.game = game  #not required for now I think
+        pygame.sprite.Sprite.__init__(self, game.background_tiles)  #adds this sprite to grass_tiles group
+        #self.game = game
         multiple= int(y/road_image.get_rect().height)
         y= y- (multiple*road_image.get_rect().height)
         self.image = road_image.subsurface((x,y,backgroundtilesize,backgroundtilesize))
