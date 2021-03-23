@@ -11,7 +11,7 @@ num_steps_for_each_trajectory = 500  # specify the required length of episode in
 
 from simulator import *
 
-for trajectory_number in range(1, num_of_trajectories_required + 1) :
+for trajectory_number in range(1, num_of_trajectories_required + 1):
     pygame.quit()  # closes the existing pygame window (if any opened)
     game = Game()  # creates an instance of Game object to run the simulator
     game.new()

@@ -12,62 +12,82 @@ from numpy.random import rand
 import sys
 import itertools
 
-backgroundtilesize=10
+# =========Background Road==============================================================================================
+ROAD_IMAGE = pygame.image.load("road.png")
+ROAD_IMAGE_RECT = ROAD_IMAGE.get_rect()
+ROAD_LENGTH_MULTIPLIER = 3
+PIXEL_ROAD_LENGTH = ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height  # in pixel
+# =========Dimensions of Display Window in pixels=======================================================================
+DISPLAY_HEIGHT = 800
+DISPLAY_WIDTH  = ROAD_IMAGE_RECT.width
+# TODO: check for changes due to changing the display width from image.width to a constant
 
-road_image=pygame.image.load("road.png")
-road_image_rect=road_image.get_rect()
-if road_image_rect.width % backgroundtilesize !=0 and road_image_rect.height % backgroundtilesize!=0:
-    print("Background tile size not compatible")
-    sys.exit()  #sys.exit("Background tile size not compatible")
+# ==========Dimensions of Moving Sprites in m===========================================================================
+CAR_LENGTH = 4
+CAR_WIDTH = 1.8
+TRUCK_LENGTH = 7
+TRUCK_WIDTH = 2
 
-FPS=5
-delta_t=1/FPS 
-pixel_conversion=20  #note: this is set such that length of screen is 800
-FLOW=0.1 #in vehicles/second on total 
-#Length_of_road=10 #in meters
-Warm_up_time=2 #in seconds
+# =========Traffic Characteristics======================================================================================
+FLOW = 0.1  # in vehicles/second  for all lanes combined
+TRUCKS_PROPORTION = 0.3
 
-proportion_of_trucks=0.3
+#============ Time Settings============================================================================================
+FPS = 5
+DELTA_T = 1 / FPS
 
-player_start_velocity=(10*5/18)
-player_acceleration_step=0.00000001  # write how these values came here
-player_decceleration_step=0.00000001
-player_friction_decc = 0.0000000075
-player_max_velocity = (150*5/18)
+# ===============Player Settings=======================================================================================
+PLAYER_ACCELERATION_STEP = 0.00000001  # write how these values came here
+PLAYER_DECCELERATION_STEP = 0.00000001
+PLAYER_FRICTION_DECC = 0.0000000075
+PLAYER_MAX_VELOCITY = (150 * 5 / 18)
 
-background_creater_constant=2
-background_tilesize=int(pixel_conversion/background_creater_constant)
-Length_of_Screen=800
-Width_of_Screen=road_image_rect.width
-entry_point_of_player=road_image_rect.height
-length_of_car=4*pixel_conversion
-width_of_car= int(1.8*pixel_conversion)
-length_of_truck=7*pixel_conversion
-width_of_truck=2*pixel_conversion
+# ========================= IDM PARAMETERS in m,s ======================================================================
+IDM_DELTA = 4
+# VEHICLE PARAMETERS-CAR
+a_CAR = 0.3
+b_CAR = 3
+s0_CAR = 2
+T_CAR = 1.5
+v0_CAR = (80 * 5 / 18)
+sigma_a_CAR = 0
+sigma_b_CAR = 0
+sigma_s0_CAR = 0
+sigma_T_CAR = 0
+sigma_v0_CAR = 0
+# VEHICLE PARAMETERS-TRUCK
+a_TRUCK = 0.3
+b_TRUCK = 2
+s0_TRUCK = 2
+T_TRUCK = 1.7
+v0_TRUCK = (20 * 5 / 18)
+sigma_a_TRUCK = 0
+sigma_b_TRUCK = 0
+sigma_s0_TRUCK = 0
+sigma_T_TRUCK = 0
+sigma_v0_TRUCK = 0
+#================actual distances in m to pixels==========================================
+PIXEL_CONVERSION_FACTOR = 20
+#================= x coordinates of middle of lanes=================================
+LEFT_LANE_MID = 210  # in pixels
+RIGHT_LANE_MID = 280
 
-left_lane_mid=210  # x co-ordinate of middle of left lane
-right_lane_mid=280
 
-delta=4
-#VEHICLE PARAMETERS-CAR
-a_CAR=0.3
-b_CAR=3
-s0_CAR=2
-T_CAR=1.5
-v0_CAR=(80*5/18)
-sigma_a_CAR=0.1/3 #sigma chosen such that even in worst case 3sigma, values are realistic
-sigma_b_CAR=1/3
-sigma_s0_CAR=0.5/3
-sigma_T_CAR=0.5/3
-sigma_v0_CAR=40/3
-#VEHICLE PARAMETERS-TRUCK
-a_TRUCK=0.3
-b_TRUCK=2
-s0_TRUCK=2
-T_TRUCK=1.7
-v0_TRUCK=(20*5/18)
-sigma_a_TRUCK=0.1/3
-sigma_b_TRUCK=1/3
-sigma_s0_TRUCK=0.5/3
-sigma_T_TRUCK=0.5/3
-sigma_v0_TRUCK=20/3
+
+# Length_of_road=10 #in meters
+WARMUP_TIME = 2  # in seconds
+
+
+
+PLAYER_START_VELOCITY = (10 * 5 / 18)
+
+
+
+
+PLAYER_ENTRY_POINT = ROAD_IMAGE_RECT.height
+
+
+
+
+
+

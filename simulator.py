@@ -12,7 +12,9 @@ etc.
 """
 from os import path
 from VehicleClass import *
-#=====================================================================================================
+
+
+# =====================================================================================================
 class Game:
     """Class to define and use the simulator.
 
@@ -40,42 +42,70 @@ class Game:
         """
         :rtype: object
         """
-        pygame.init()
-        self.screen=pygame.display.set_mode((Width_of_Screen,Length_of_Screen))
-        pygame.display.set_caption("IDM" )
-        self.clock= pygame.time.Clock()
-        self.load_data()
+        # ========declaring sprites and groups for vehicles================
+        self.player = pygame.sprite.Sprite()
+        self.all_vehicles = pygame.sprite.Group()
+        self.other_vehicles = pygame.sprite.Group()
+        self.waiting_vehicles_left = pygame.sprite.Group()
+        self.waiting_vehicles_right = pygame.sprite.Group()
+        # ========declaring pygame display elements========
+        self.screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        pygame.display.set_caption("IDM")
+        self.camera = Camera(100, 100)  # entering arbitrary values for length and width of camera
+        # ==========background sprites================================
+        self.background_tiles = pygame.sprite.Group()
+        self.create_background_sprites(ROAD_LENGTH_MULTIPLIER)
+        # =============files===================================
         self.f = open("trajectory_data.txt", "a")
+        # =============== MDP ===================================
+        self.state = None
+        self.action = None
+        #=========================================================
+        self.seconds_elapsed_checkpoint = 0
+        self.vehicle_created_counter = 0
+        self.player_entered = 0
+
+        # TODO: get rid of this clock, feels it wastes time
+        self.clock = pygame.time.Clock()
+
+        # TODO: how to insert message that lasts a few seconds
         """message_font=pygame.font.SysFont("None",20)
         self.NoLeftShift_message_text=message_font.render("Already in Left lane",0,(255,255,255))
         self.NoRightShift_message_text=message_font.render("Already in Right lane",0,(255,255,255))
         self.MaxSpeed_message_text=message_font.render("Attained maximum speed",0,(255,255,255))"""
-        
-    def load_data(self):
-        """Sets map object from file.
 
-        This fetches the textfile containing the background map image and set it as `map' variable of the `Game' class.
+    def reset(self, seed):
+        self.all_vehicles.empty()
+        self.other_vehicles.empty()
+        self.waiting_vehicles_left.empty()
+        self.waiting_vehicles_right.empty()
+        pygame.quit()
+        Vehicle_data = self.read_vehicle_data(seed)  # note this is a list of strings
+        pygame.init()
+        self.create_initial_vehicles(Vehicle_data)
+        self.draw()
+        self.state = self.extract_state_features()
+        return self.state
 
-        Args:
-            None
+    def read_vehicle_data(self, seed):
+        Vehicle_data = []
+        seed_text = str(seed)
+        file_name = 'Seed_' + seed_text + '.txt'
+        file = open(file_name, 'r')
+        file_contents = file.read().splitlines()
+        for i in range(len(file_contents)):
+            Vehicle_data.append(file_contents[i][1:len(file_contents[i]) - 1].split(
+                ','))  # range is kept like this to avoid an extra pair of list square brackets
+        return Vehicle_data
 
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-        game_folder=path.dirname(__file__)
-        self.map=Map(path.join(game_folder,'roadmap.txt'))
-        
-    def create_background_sprites_from_image(self):
+    def create_background_sprites(self, k):
         """Creates background sprites.
 
-        This functions creates sprites which are used as background image. These images of the sprites are formed
-        by splitting 'road_image' into tiles of  dimension `backgroundtilesize' X `backgroundtilesize'.
+        This functions creates sprites which are used as background image. Each sprite is a road_image asset. `k' number
+        of sprites are kept lengthwise to create a very long road background.
 
         Args:
-            None
+            k: int variable indicating how many times road_image has to be repeated to create the full road length.
 
         Returns:
             None
@@ -84,80 +114,116 @@ class Game:
             None
         """
 
-        for row in range(0,road_image_rect.width,backgroundtilesize):
-            for col in range (0,road_image_rect.height,backgroundtilesize):
-                Background_Tile(self,row,col)              
-        
-        
-    """def set_screen_background(self):
-        for row,tiles in enumerate(self.map.data):
-            for col,tile  in enumerate(tiles):
-                if tile=='G':
-                    #self.screen.blit(grasstexture_image,(col*background_tilesize,row*background_tilesize))
-                    Grass()
-                if tile=='R':
-                    self.screen.blit(roadtexture_image,(col*background_tilesize,row*background_tilesize))
-                if tile=='Y':
-                    self.screen.blit(yellowpainttexture_image,(col*background_tilesize,row*background_tilesize))
-       """     
-    def new(self):
-        """Sets up variables for a new game.
+        for y in range(0, (k * ROAD_IMAGE_RECT.height), ROAD_IMAGE_RECT.height):
+            self.background_tiles.add(Background_Sprite(0, y))
 
-        Variables/lists/objects for a new game is created/initialized.
+    def create_initial_vehicles(self, Vehicle_data):
+        for vehicle_data in Vehicle_data:
+            if int(vehicle_data[0]) == 3:
+                self.player = PlayerCar(int(vehicle_data[1]), PIXEL_ROAD_LENGTH - convert_to_pixels(float(vehicle_data[2])),
+                                        float(vehicle_data[3]), float(vehicle_data[4]))
+                self.all_vehicles.add(self.player)
+            else:
+                self.all_vehicles.add(
+                    OtherVeh(int(vehicle_data[1]), PIXEL_ROAD_LENGTH - convert_to_pixels(float(vehicle_data[2])), float(vehicle_data[3]),
+                             float(vehicle_data[4])))
+                self.other_vehicles.add(
+                    OtherVeh(int(vehicle_data[1]), PIXEL_ROAD_LENGTH - convert_to_pixels(float(vehicle_data[2])), float(vehicle_data[3]),
+                             float(vehicle_data[4])))
 
-        Args:
-            None
+    def extract_state_features(self):
+        vehicle_front_same_lane, vehicle_back_same_lane, vehicle_front_other_lane, vehicle_back_other_lane \
+            = self.neighbouring_vehicles(self.player)
+        if vehicle_front_same_lane == None:
+            spacing_front_same_lane = 100000000000
+            velocity_front_same_lane = 0
+        else:
+            spacing_front_same_lane = (self.player.rect.y - vehicle_front_same_lane.rect.y) / PIXEL_CONVERSION_FACTOR
+            velocity_front_same_lane = vehicle_front_same_lane.v
+        if vehicle_front_other_lane == None:
+            spacing_front_other_lane = 100000000000
+            velocity_front_other_lane = 0
+        else:
+            spacing_front_other_lane = (self.player.rect.y - vehicle_front_other_lane.rect.y) / PIXEL_CONVERSION_FACTOR
+            velocity_front_other_lane = vehicle_front_other_lane.v
 
-        Returns:
-            None
+        if vehicle_back_other_lane == None:
+            spacing_back_other_lane = 1000000000000000000
+            velocity_back_other_lane = 0
+        else:
+            spacing_back_other_lane = (vehicle_back_other_lane.rect.y - self.player.rect.y) / PIXEL_CONVERSION_FACTOR
+            velocity_back_other_lane = vehicle_back_other_lane.v
 
-        Raises:
-            None
-        """
+        feature_list = [spacing_front_same_lane, spacing_front_other_lane, spacing_back_other_lane,
+                        velocity_front_same_lane, velocity_front_other_lane, velocity_back_other_lane]
+        return feature_list
 
-        self.all_vehicles=pygame.sprite.Group()
-        self.other_vehicles=pygame.sprite.Group()
-        self.waiting_vehicles_left=pygame.sprite.Group()
-        self.waiting_vehicles_right=pygame.sprite.Group()
-        self.background_tiles=pygame.sprite.Group()
-        self.create_background_sprites_from_image()
-        self.seconds_elapsed_checkpoint=0
-        self.vehicle_created_counter=0
-        self.player_entered=0
-        self.camera=Camera(self.map.width, self.map.height)
-        
-        
-    def Warm_up(self):
-        """Initial run to populate vehicles on road.
+    def neighbouring_vehicles(self, vehicle):
+        same_lane_vehicles = [sprite for sprite in self.all_vehicles if sprite.lane == vehicle.lane]
+        same_lane_vehicles_front = [sprite for sprite in same_lane_vehicles if vehicle.rect.top - sprite.rect.top > 0]
+        same_lane_vehicles_back = [sprite for sprite in same_lane_vehicles if vehicle.rect.top - sprite.rect.top < 0]
+        if len(same_lane_vehicles_front) > 0:
+            vehicle_front_same_lane = min([sprite for sprite in same_lane_vehicles_front],
+                                          key=lambda sprite: vehicle.rect.top - sprite.rect.top)
+        else:
+            vehicle_front_same_lane = None
+        if len(same_lane_vehicles_back) > 0:
+            vehicle_back_same_lane = min([sprite for sprite in same_lane_vehicles_back],
+                                         key=lambda sprite: sprite.rect.top - vehicle.rect.top)
+        else:
+            vehicle_back_same_lane = None
+        other_lane_vehicles = [sprite for sprite in self.all_vehicles if not sprite.lane == vehicle.lane]
+        other_lane_vehicles_front = [sprite for sprite in other_lane_vehicles if vehicle.rect.top - sprite.rect.top > 0]
+        other_lane_vehicles_back = [sprite for sprite in other_lane_vehicles if vehicle.rect.top - sprite.rect.top < 0]
+        if len(other_lane_vehicles_front) > 0:
+            vehicle_front_other_lane = min([sprite for sprite in other_lane_vehicles_front],
+                                           key=lambda sprite: vehicle.rect.top - sprite.rect.top)
+        else:
+            vehicle_front_other_lane = None
+        if len(other_lane_vehicles_back) > 0:
+            vehicle_back_other_lane = min([sprite for sprite in other_lane_vehicles_back],
+                                          key=lambda sprite: sprite.rect.top - vehicle.rect.top)
+        else:
+            vehicle_back_other_lane = None
+        return vehicle_front_same_lane, vehicle_back_same_lane, vehicle_front_other_lane, vehicle_back_other_lane
 
-        During the period `Warm_up_time', vehicle sprites other than player are generated as per input flow from the
-        entry point of the road, and they are updated according to their update policy (IDM).
+    def front_vehicle(self, vehicle):
+        same_lane_vehicles = [sprite for sprite in self.all_vehicles if sprite.lane == vehicle.lane]
+        same_lane_vehicles_front = [sprite for sprite in same_lane_vehicles if vehicle.rect.top - sprite.rect.top > 0]
+        if len(same_lane_vehicles_front) > 0:
+            vehicle_front_same_lane = min([sprite for sprite in same_lane_vehicles_front],
+                                          key=lambda sprite: vehicle.rect.top - sprite.rect.top)
+        else:
+            vehicle_front_same_lane = None
+        return vehicle_front_same_lane
 
-        Args:
-            None
+    def step(self):
+        self.check_for_quit()
+        self.generate_incoming_vehicles()
+        self.insert_veh_leftlane()
+        self.insert_veh_rightlane()
+        self.update_gap_velocitydifference()
+        self.action= self.player.update()
+        self.all_vehicles.update()
+        self.state = self.extract_state_features()
+        self.camera.update(self.player_car)
+        self.draw()
+        return self.state
 
-        Returns:
-            None
+    def write_data(self):
+        pass
 
-        Raises:
-            None
-        """
+    def update_gap_velocitydifference(self):
+        for veh in self.other_vehicles:
+            front_veh = self.front_vehicle(veh)
+            if front_veh == None:
+                veh.delta_v = -10000000000
+                veh.s = 10000000000
+            else:
+                veh.delta_v = veh.v - front_vehicle.v
+                veh.s = (veh.rect.top - front_vehicle.rect.top) / PIXEL_CONVERSION_FACTOR
 
-        # adding a vehicle at entry position each on left and right lanes
-        self.all_vehicles.add(OtherVeh(road_image_rect.height-10,1,self))
-        self.all_vehicles.add(OtherVeh(road_image_rect.height-10,2,self))
-
-        for wt in range(Warm_up_time*FPS):
-            self.check_for_quit()
-            self.generate_incoming_vehicles()
-            self.insert_veh_leftlane()
-            self.insert_veh_rightlane()            
-            #self.all_vehicles.update(self)
-            self.other_vehicles.update(self)
-            self.draw()  # rendering done for checking purpose, though not really required in warmup
-            self.clock.tick(FPS)
-
-    def main_game(self,num_steps_for_each_trajectory,trajectory_number):
+    def main_game(self, num_steps_for_each_trajectory, trajectory_number):
         """Player playing the game.
 
         This is the main part of the game where the player plays by moving the player car. The player car is inserted
@@ -175,35 +241,35 @@ class Game:
         Raises:
             None
         """
-        #display start of game
-        self.player_car=PlayerCar(entry_point_of_player,random.randint(1,2))
-        #message_font=pygame.font.SysFont("None",50)
-        #self.screen.blit(message_font.render("START GAME",0,(0,0,255)),(200,50)) 
-        #pygame.display.flip()
-        for step_no in range(num_steps_for_each_trajectory+1):
-            self.check_for_quit()
-            self.insert_player()            
+        # display start of game
+        self.player_car = PlayerCar(PLAYER_ENTRY_POINT, random.randint(1, 2))
+        # message_font=pygame.font.SysFont("None",50)
+        # self.screen.blit(message_font.render("START GAME",0,(0,0,255)),(200,50))
+        # pygame.display.flip()
+        for step_no in range(num_steps_for_each_trajectory + 1):
+
+            self.insert_player()
             self.generate_incoming_vehicles()
             self.insert_veh_leftlane()
-            self.insert_veh_rightlane()            
-            #self.all_vehicles.update(self)
+            self.insert_veh_rightlane()
+            # self.all_vehicles.update(self)
             self.other_vehicles.update(self)
-            feature_list=self.player_car.update(self)
+            feature_list = self.player_car.update(self)
             if self.player_entered:
-                row_data=[trajectory_number,step_no]
+                row_data = [trajectory_number, step_no]
                 for f in feature_list:
-                    row_data.append(f) 
-                #Data.append(row_data)
+                    row_data.append(f)
+                    # Data.append(row_data)
                 self.f.write(str(row_data))
+                self.f.write('/n')
             self.camera.update(self.player_car)
-            collided_list=pygame.sprite.spritecollide(self.player_car,self.other_vehicles,False)
-            if collided_list:    
+            collided_list = pygame.sprite.spritecollide(self.player_car, self.other_vehicles, False)
+            if collided_list:
                 print("Collision")
-            self.draw()  
+            self.draw()
             self.clock.tick(FPS)
-        self.f.close()   
-        
-        
+        self.f.close()
+
     def generate_incoming_vehicles(self):
         """Create vehicles as per input flow value.
 
@@ -222,16 +288,16 @@ class Game:
                 None
         """
         # TODO: make this function direct by fps conversions, remove seconds_elapsed
-        time=pygame.time.get_ticks()/1000
-        self.vehicle_created_counter=self.vehicle_created_counter + ((time-self.seconds_elapsed_checkpoint)*FLOW)
-        self.seconds_elapsed_checkpoint=time
+        time = pygame.time.get_ticks() / 1000
+        self.vehicle_created_counter = self.vehicle_created_counter + ((time - self.seconds_elapsed_checkpoint) * FLOW)
+        self.seconds_elapsed_checkpoint = time
         if self.vehicle_created_counter >= 1:
-            self.vehicle_created_counter=self.vehicle_created_counter-1 #will work only till 1veh/sec
-            if random.randint(1,2)==1:
-                self.waiting_vehicles_left.add(OtherVeh(road_image_rect.height,1,self))            
+            self.vehicle_created_counter = self.vehicle_created_counter - 1  # will work only till 1veh/sec
+            if random.randint(1, 2) == 1:
+                self.waiting_vehicles_left.add(OtherVeh(ROAD_IMAGE_RECT.height, 1, self))
             else:
-                self.waiting_vehicles_right.add(OtherVeh(road_image_rect.height,2,self))
-     
+                self.waiting_vehicles_right.add(OtherVeh(ROAD_IMAGE_RECT.height, 2, self))
+
     def check_for_quit(self):
         """Check if user quits pygame window.
 
@@ -249,7 +315,7 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                
+
     def insert_veh_leftlane(self):
         """Adds vehicle from `waiting_vehicles_left' to `all_vehicles' subject to conditions.
 
@@ -267,20 +333,21 @@ class Game:
                 None
         """
 
-        #if self.waiting_vehicles_left:
+        # if self.waiting_vehicles_left:
         if False:
             sprite = random.choice(self.waiting_vehicles_left.sprites())
             # TODO: avoid finding neighbouring fully, just find front veh
-            vehicle_in_front_same_lane,vehicle_in_back_same_lane,vehicle_in_front_other_lane,vehicle_in_back_other_lane=neighbouring_vehicles(sprite,self.all_vehicles)
-            if vehicle_in_front_same_lane==None:
-                sprite.rect.y=road_image_rect.height-sprite.length
+            vehicle_in_front_same_lane, vehicle_in_back_same_lane, vehicle_in_front_other_lane, vehicle_in_back_other_lane = neighbouring_vehicles(
+                sprite, self.all_vehicles)
+            if vehicle_in_front_same_lane == None:
+                sprite.rect.y = ROAD_IMAGE_RECT.height - sprite.length
                 self.all_vehicles.add(sprite)
                 self.waiting_vehicles_left.remove(sprite)
             """elif sprite.rect.top-vehicle_in_front_same_lane.rect.top-vehicle_in_front_same_lane.length >  (sprite.s0*pixel_conversion)+sprite.length:
                 sprite.rect.y=road_image_rect.height-sprite.length
                 self.all_vehicles.add(sprite)
                 self.waiting_vehicles_left.remove(sprite)"""
-            
+
     def insert_veh_rightlane(self):
         """Adds vehicle from `waiting_vehicles_right' to `all_vehicles' subject to conditions.
 
@@ -295,19 +362,20 @@ class Game:
         Raises:
                 None
         """
-        #if self.waiting_vehicles_right:
+        # if self.waiting_vehicles_right:
         if False:
             sprite = random.choice(self.waiting_vehicles_right.sprites())
-            vehicle_in_front_same_lane,vehicle_in_back_same_lane,vehicle_in_front_other_lane,vehicle_in_back_other_lane=neighbouring_vehicles(sprite,self.all_vehicles)
-            if vehicle_in_front_same_lane==None:
-                sprite.rect.y=road_image_rect.height-sprite.length
+            vehicle_in_front_same_lane, vehicle_in_back_same_lane, vehicle_in_front_other_lane, vehicle_in_back_other_lane = neighbouring_vehicles(
+                sprite, self.all_vehicles)
+            if vehicle_in_front_same_lane == None:
+                sprite.rect.y = ROAD_IMAGE_RECT.height - sprite.length
                 self.all_vehicles.add(sprite)
                 self.waiting_vehicles_right.remove(sprite)
             """elif sprite.rect.top-vehicle_in_front_same_lane.rect.top-vehicle_in_front_same_lane.length >  (sprite.s0*pixel_conversion)+sprite.length:
                 sprite.rect.y=road_image_rect.height-sprite.length
                 self.all_vehicles.add(sprite)
                 self.waiting_vehicles_right.remove(sprite)"""
-                
+
     def insert_player(self):
         """Insert player vehicle on road.
 
@@ -337,12 +405,11 @@ class Game:
                 self.all_vehicles.add(self.player_car)
                 self.player_entered=1
                 print("player_entered")"""
-            self.all_vehicles.add(self.player_car)                
-            self.player_car.rect.y=entry_point_of_player            
-            self.player_entered=1
-            print("player_entered")  
-                
-    
+            self.all_vehicles.add(self.player_car)
+            self.player_car.rect.y = PLAYER_ENTRY_POINT
+            self.player_entered = 1
+            print("player_entered")
+
     def draw(self):
         """Does rendering in pygame window.
 
@@ -357,29 +424,18 @@ class Game:
         Raises:
                 None
         """
-        #self.set_screen_background()
-        #self.screen.fill((0,0,0))
         for sprite in self.background_tiles:
-            self.screen.blit(sprite.image,self.camera.apply(sprite))
+            self.screen.blit(sprite.image, self.camera.apply(sprite))
+        # TODO: check camera apply on background sprites
         for sprite in self.all_vehicles:
-            self.screen.blit(sprite.image,self.camera.apply(sprite))
-        #pygame.display.flip() 
+            self.screen.blit(sprite.image, self.camera.apply(sprite))
+        # pygame.display.flip()
         pygame.display.update()
-        
-    
-        
-"""        
+
+
+
 game=Game()
-game.new()
-game.Warm_up()  
-print("Warm up Over")      
-game.main_game()  """     
-        
-        
-        
-        
-        
-        
-        
-        
-        
+game.reset(1)
+while True:
+    state=game.step()
+
