@@ -16,7 +16,7 @@ import itertools
 RIGHT_TURN=1
 ROAD_IMAGE = pygame.image.load("road.png")
 ROAD_IMAGE_RECT = ROAD_IMAGE.get_rect()
-ROAD_LENGTH_MULTIPLIER = 2
+ROAD_LENGTH_MULTIPLIER = 2   #TODO: make it random
 ROAD_RIGHTTURN_IMAGE=pygame.image.load("road_rightturn.png")  # I have kept the width of both images same
 ROAD_RIGHTTURN_IMAGE_RECT = ROAD_RIGHTTURN_IMAGE.get_rect()
 if RIGHT_TURN == 1:
