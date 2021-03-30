@@ -13,10 +13,16 @@ import sys
 import itertools
 
 # =========Background Road==============================================================================================
+RIGHT_TURN=1
 ROAD_IMAGE = pygame.image.load("road.png")
 ROAD_IMAGE_RECT = ROAD_IMAGE.get_rect()
-ROAD_LENGTH_MULTIPLIER = 3
-PIXEL_ROAD_LENGTH = ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height  # in pixel
+ROAD_LENGTH_MULTIPLIER = 2
+ROAD_RIGHTTURN_IMAGE=pygame.image.load("road_rightturn.png")  # I have kept the width of both images same
+ROAD_RIGHTTURN_IMAGE_RECT = ROAD_RIGHTTURN_IMAGE.get_rect()
+if RIGHT_TURN == 1:
+    PIXEL_ROAD_LENGTH = ROAD_RIGHTTURN_IMAGE_RECT.height + (ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height)
+else:
+    PIXEL_ROAD_LENGTH = ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height  # in pixel
 # =========Dimensions of Display Window in pixels=======================================================================
 DISPLAY_HEIGHT = 800
 DISPLAY_WIDTH  = ROAD_IMAGE_RECT.width
@@ -33,12 +39,12 @@ FLOW = 0.1  # in vehicles/second  for all lanes combined
 TRUCKS_PROPORTION = 0.3
 
 #============ Time Settings============================================================================================
-FPS = 5
+FPS = 10
 DELTA_T = 1 / FPS
 
 # ===============Player Settings=======================================================================================
-PLAYER_ACCELERATION_STEP = 0.00000001  # write how these values came here
-PLAYER_DECCELERATION_STEP = 0.00000001
+PLAYER_ACCELERATION_STEP = 0.25/(DELTA_T*DELTA_T)  # write how these values came here
+PLAYER_DECCELERATION_STEP = 0.125/(DELTA_T*DELTA_T)
 PLAYER_FRICTION_DECC = 0.0000000075
 PLAYER_MAX_VELOCITY = (150 * 5 / 18)
 
@@ -74,17 +80,7 @@ RIGHT_LANE_MID = 280
 
 
 
-# Length_of_road=10 #in meters
-WARMUP_TIME = 2  # in seconds
 
-
-
-PLAYER_START_VELOCITY = (10 * 5 / 18)
-
-
-
-
-PLAYER_ENTRY_POINT = ROAD_IMAGE_RECT.height
 
 
 

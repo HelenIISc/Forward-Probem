@@ -34,7 +34,7 @@ class OtherVeh(pygame.sprite.Sprite):
         delta_v: Float variable for difference in velocity with front vehicle.
     """
 
-    def __init__(self, lane, position, velocity, acceleration, spacing=0, delta_v=0):
+    def __init__(self, lane, position, velocity=0.5*((TRUCKS_PROPORTION* v0_TRUCK)+((1-TRUCKS_PROPORTION)*v0_CAR)), acceleration=0, spacing=0, delta_v=0):
         pygame.sprite.Sprite.__init__(self)
         # init() creates either a truck or a car depending upon 'TRUCKS_PROPORTION'
         if rand() < TRUCKS_PROPORTION:
@@ -67,10 +67,11 @@ class OtherVeh(pygame.sprite.Sprite):
 
     def update(self):
 
-        s_star = self.s0 + max(0, (self.v * self.T) + (self.v * self.delta_v / (2 * numpy.power(self.a * self.b, 0.5))))
+        s_star = self.s0 + max(0, (self.v * self.T) + ((self.v * self.delta_v)/(2 * numpy.power(self.a * self.b, 0.5))))
+
         self.acc = self.a * (1 - numpy.power(self.v / self.v0, IDM_DELTA) - numpy.power(s_star / self.s, 2))
         old_velocity = self.v
-        self.v = clamp((old_velocity*DELTA_T)+(0.5*self.acc*DELTA_T*DELTA_T),0,self.v0)
+        self.v = clamp((old_velocity)+(self.acc*DELTA_T),0,self.v0)
         self.acc = (self.v - old_velocity)/DELTA_T  # adjustment to acc due to clamping of velocity
 
         """
@@ -132,7 +133,9 @@ class PlayerCar(pygame.sprite.Sprite):
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
-            if self.lane == 2:
+            if self.rect.top < PIXEL_ROAD_LENGTH - (ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height):
+                pass
+            elif self.lane == 2:
                 x_change = -(RIGHT_LANE_MID - LEFT_LANE_MID)
                 self.lane = 1
                 action = 1
@@ -141,7 +144,9 @@ class PlayerCar(pygame.sprite.Sprite):
                 game.screen.blit(game.NoLeftShift_message_text,(50,50)) 
                 pygame.display.flip()"""
         if keys[pygame.K_RIGHT]:
-            if self.lane == 1:
+            if self.rect.top < PIXEL_ROAD_LENGTH - (ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height):
+                pass
+            elif self.lane == 1:
                 x_change = (RIGHT_LANE_MID - LEFT_LANE_MID)
                 self.lane = 2
                 action = 2
@@ -151,15 +156,13 @@ class PlayerCar(pygame.sprite.Sprite):
                 pygame.display.flip()"""
         if keys[pygame.K_UP]:
             self.acc = PLAYER_ACCELERATION_STEP - PLAYER_FRICTION_DECC
-            # self.v = min(PLAYER_MAX_VELOCITY, self.v + (PLAYER_ACCELERATION_STEP * (1 / FPS)))
             action = 3
         if keys[pygame.K_DOWN]:
             self.acc = - PLAYER_DECCELERATION_STEP - PLAYER_FRICTION_DECC
-            # self.v = max(0, self.v - (PLAYER_DECCELERATION_STEP * (1 / FPS)))
             action = 4
 
-        self.acc = -self.v / DELTA_T  # taking -u/t part of a=(v-u)/t
         self.v = clamp(self.v + (self.acc * DELTA_T), 0, PLAYER_MAX_VELOCITY)
+        self.acc = -self.v / DELTA_T  # taking -u/t part of a=(v-u)/t
         self.acc = self.acc + (self.v / DELTA_T)  # adding v/t part of a=(v-u)/t
         y_change = (self.v * DELTA_T) - (0.5 * self.acc * DELTA_T * DELTA_T)  # s= vt-at2/2
 
@@ -167,55 +170,6 @@ class PlayerCar(pygame.sprite.Sprite):
         self.rect.y = self.rect.y - convert_to_pixels(y_change)
 
         return action
-
-
-def neighbouring_vehicles(vehicle, all_vehicles):
-    """Fetches the neighbouring sprites.
-
-    This fetches the vehicles neighbouring to vehicle from the list of
-    all_vehicles.
-
-    Args:
-        vehicle: OtherVeh or PlayerCar instance whose neighbours are to be found.
-        all_vehicles: Sprite Group of OtherVeh or PlayerCar instances  from which neighbours are to be found.
-
-    Returns:
-        4 items of OtherVeh or PlayerCar instance from the sprite group all_vehicles. They are
-        vehicle_in_front_same_lane,vehicle_in_back_same_lane,vehicle_in_front_other_lane,
-        in order vehicle_in_back_other_lane. In the absence of a neighbouring vehicle at any
-        specified position, function returns None instead of a sprite
-
-    Raises:
-        None
-    """
-    same_lane_vehicles = [sprite for sprite in all_vehicles if sprite.lane == vehicle.lane]
-    same_lane_vehicles_in_front = [sprite for sprite in same_lane_vehicles if vehicle.rect.top - sprite.rect.top > 0]
-    same_lane_vehicles_in_back = [sprite for sprite in same_lane_vehicles if vehicle.rect.top - sprite.rect.top < 0]
-    if len(same_lane_vehicles_in_front) > 0:
-        vehicle_in_front_same_lane = min([sprite for sprite in same_lane_vehicles_in_front],
-                                         key=lambda sprite: vehicle.rect.top - sprite.rect.top)
-    else:
-        vehicle_in_front_same_lane = None
-    if len(same_lane_vehicles_in_back) > 0:
-        vehicle_in_back_same_lane = min([sprite for sprite in same_lane_vehicles_in_back],
-                                        key=lambda sprite: sprite.rect.top - vehicle.rect.top)
-    else:
-        vehicle_in_back_same_lane = None
-    other_lane_vehicles = [sprite for sprite in all_vehicles if not sprite.lane == vehicle.lane]
-    other_lane_vehicles_in_front = [sprite for sprite in other_lane_vehicles if vehicle.rect.top - sprite.rect.top > 0]
-    other_lane_vehicles_in_back = [sprite for sprite in other_lane_vehicles if vehicle.rect.top - sprite.rect.top < 0]
-    if len(other_lane_vehicles_in_front) > 0:
-        vehicle_in_front_other_lane = min([sprite for sprite in other_lane_vehicles_in_front],
-                                          key=lambda sprite: vehicle.rect.top - sprite.rect.top)
-    else:
-        vehicle_in_front_other_lane = None
-    if len(other_lane_vehicles_in_back) > 0:
-        vehicle_in_back_other_lane = min([sprite for sprite in other_lane_vehicles_in_back],
-                                         key=lambda sprite: sprite.rect.top - vehicle.rect.top)
-    else:
-        vehicle_in_back_other_lane = None
-    return vehicle_in_front_same_lane, vehicle_in_back_same_lane, vehicle_in_front_other_lane, vehicle_in_back_other_lane
-
 
 # =========================================================================================================================================
 class Camera:
@@ -282,9 +236,9 @@ class Background_Sprite(pygame.sprite.Sprite):
         rect: A pygame Rect object representing the sprite.
     """
 
-    def __init__(self, x=0, y=0):
+    def __init__(self, x=0, y=0, image=ROAD_IMAGE):
         pygame.sprite.Sprite.__init__(self)
-        self.image = ROAD_IMAGE
+        self.image = image
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
