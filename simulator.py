@@ -60,6 +60,9 @@ class Game:
         # =============== MDP ===================================
         self.state = None
         self.action = None
+        self.action_space=[0,1,2,3,4]
+        self.reward=None
+        self.done=None
         # ===============INPUT FLOW AT ENTRY====================================
         self.input_vehicles = 0
 
@@ -200,27 +203,28 @@ class Game:
 
     # TODO: check if rendering all vehicles or not, check if way sto reduce that
 
-    def step(self):
+    def step(self,action):
         self.check_for_quit()
         for veh in self.other_vehicles:
             self.update_gap_velocitydifference(veh)
-        self.action = self.player.update()
+        lane_change_action,wrong_action,y_change = self.player.update(action)
         self.other_vehicles.update()
         self.state = self.extract_state_features()
-        self.write_data(self.state)
+        collision=self.check_collision()
+        self.reward= numpy.dot(REWARD_WEIGHTS,[collision,lane_change_action,wrong_action,y_change])
+        self.done = False
         self.camera.update(self.player)
         self.draw()
         self.clock.tick(FPS)
         self.generate_incoming_vehicles()
-        return self.state
+        return self.state, self.reward, self.done, None
 
-    def write_data(self, data):
-        # row_data = [trajectory_number, step_no]
-        row_data = ['trajectory_number', 'step_no']
-        for f in data:
-            row_data.append(f)
-        self.f.write(str(row_data))
-        self.f.write('/n')
+    def check_collision(self):
+        collided_vehicles = pygame.sprite.spritecollide(self.player,self.other_vehicles,False)
+        collision= 1
+        if len(collided_vehicles) == 0:
+            collision= 0
+        return collision
 
     def update_gap_velocitydifference(self, veh):
         front_vehicle = self.front_vehicle(veh)
@@ -349,8 +353,9 @@ class Game:
         # pygame.display.flip()
         pygame.display.update()
 
-
+"""
 game = Game()
 state = game.reset(1)
 while True:
     state = game.step()
+"""

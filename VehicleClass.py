@@ -126,40 +126,35 @@ class PlayerCar(pygame.sprite.Sprite):
         self.rect.y = position
         self.v, self.acc = velocity, acceleration
 
-    def update(self):
+    def update(self,action):
         x_change = 0
         y_change = 0
-        action = 0  # corresponding to no key pressed
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            if self.rect.top < PIXEL_ROAD_LENGTH - (ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height):
-                pass
-            elif self.lane == 2:
+        lane_change_action=0
+        wrong_action=0
+        if action == 1:
+            self.acc = 0 - PLAYER_FRICTION_DECC
+            if self.lane == 2:
                 x_change = -(RIGHT_LANE_MID - LEFT_LANE_MID)
                 self.lane = 1
-                action = 1
+                lane_change_action=1
+            else:
+                wrong_action=1
+                #game.screen.blit(game.NoLeftShift_message_text,(50,50))
+                #pygame.display.flip()
+        if action==2:
             self.acc = 0 - PLAYER_FRICTION_DECC
-            """else:
-                game.screen.blit(game.NoLeftShift_message_text,(50,50)) 
-                pygame.display.flip()"""
-        if keys[pygame.K_RIGHT]:
-            if self.rect.top < PIXEL_ROAD_LENGTH - (ROAD_LENGTH_MULTIPLIER * ROAD_IMAGE_RECT.height):
-                pass
-            elif self.lane == 1:
+            if self.lane == 1:
                 x_change = (RIGHT_LANE_MID - LEFT_LANE_MID)
                 self.lane = 2
-                action = 2
-            self.acc = 0 - PLAYER_FRICTION_DECC
-            """else:
-                game.screen.blit(game.NoRightShift_message_text,(50,50))
-                pygame.display.flip()"""
-        if keys[pygame.K_UP]:
+                lane_change_action=1
+            else:
+                wrong_action=1
+                #game.screen.blit(game.NoRightShift_message_text,(50,50))
+                #pygame.display.flip()"""
+        if action==3:
             self.acc = PLAYER_ACCELERATION_STEP - PLAYER_FRICTION_DECC
-            action = 3
-        if keys[pygame.K_DOWN]:
+        if action==4:
             self.acc = - PLAYER_DECCELERATION_STEP - PLAYER_FRICTION_DECC
-            action = 4
 
         self.v = clamp(self.v + (self.acc * DELTA_T), 0, PLAYER_MAX_VELOCITY)
         self.acc = -self.v / DELTA_T  # taking -u/t part of a=(v-u)/t
@@ -169,8 +164,7 @@ class PlayerCar(pygame.sprite.Sprite):
         self.rect.x = self.rect.x + x_change
         self.rect.y = self.rect.y - convert_to_pixels(y_change)
 
-        return action
-
+        return lane_change_action,wrong_action,y_change
 # =========================================================================================================================================
 class Camera:
     """Class to define camera.

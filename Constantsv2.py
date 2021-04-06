@@ -13,7 +13,7 @@ import sys
 import itertools
 
 # =========Background Road==============================================================================================
-RIGHT_TURN=1
+RIGHT_TURN=0
 ROAD_IMAGE = pygame.image.load("road.png")
 ROAD_IMAGE_RECT = ROAD_IMAGE.get_rect()
 ROAD_LENGTH_MULTIPLIER = 2   #TODO: make it random
@@ -77,7 +77,8 @@ PIXEL_CONVERSION_FACTOR = 20
 #================= x coordinates of middle of lanes=================================
 LEFT_LANE_MID = 210  # in pixels
 RIGHT_LANE_MID = 280
-
+#==================reward weights===================================================
+REWARD_WEIGHTS=[-10,-2,-1,3]  # corresponding to collision,lane_change,wrong_action,y_change
 
 
 
